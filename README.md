@@ -14,14 +14,16 @@ A deep learning-based web application for detecting solar panel defects from Ele
 - Cloud deployment via Streamlit Community Cloud
 
 ## Project Structure
-```bash
+
 app.py
 model_utils.py
 app_config.py
 requirements.txt
 packages.txt
 solar_defect_model_final.pth
-README.md '''
+README.md 
+assets/
+
 
 ## Model Details
 
@@ -84,16 +86,15 @@ The model classifies the following defect types:
 
 ### Clone repository
 
-```bash
 git clone https://github.com/Er-Pr9/solar-defect-detection.git
 cd solar-defect-detection
 
 ## How to Run Locally
-```bash
+
 pip install -r requirements.txt
 
 ## Run application
-```bash
+
 streamlit run app.py
 
 ## Deployment
