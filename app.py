@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 from PIL import Image
 
-from config import MODEL_PATH, CLASS_INFO
+from app_config import MODEL_PATH, CLASS_INFO
 from model_utils import (
     get_inference_transform,
     load_model,

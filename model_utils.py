@@ -9,7 +9,7 @@ import torch.nn as nn
 from PIL import Image
 from torchvision import models, transforms
 
-from config import IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
+from app_config import IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
 
 GRADCAM_AVAILABLE = False
 GRADCAM_IMPORT_ERROR = None
