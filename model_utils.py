@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -29,11 +29,13 @@ def get_device() -> torch.device:
 
 
 def get_inference_transform() -> transforms.Compose:
-    return transforms.Compose([
-        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-    ])
+    return transforms.Compose(
+        [
+            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
+        ]
+    )
 
 
 def build_model(num_classes: int) -> nn.Module:
@@ -44,9 +46,12 @@ def build_model(num_classes: int) -> nn.Module:
 
 def load_model(model_path: str | Path):
     model_path = Path(model_path)
+
     if not model_path.exists():
         raise FileNotFoundError(
-            f"Model file not found at '{model_path}'. Place the .pth checkpoint in the same folder as app.py or update MODEL_PATH in config.py."
+            f"Model file not found at '{model_path}'. "
+            "Place the .pth checkpoint in the same folder as app.py "
+            "or update MODEL_PATH in config.py."
         )
 
     device = get_device()
@@ -86,7 +91,10 @@ def predict_topk(
         probs = torch.softmax(outputs, dim=1)[0]
 
     top_probs, top_idxs = torch.topk(probs, k=min(k, len(class_names)))
-    top_results = [(class_names[idx.item()], prob.item()) for prob, idx in zip(top_probs, top_idxs)]
+    top_results = [
+        (class_names[idx.item()], prob.item())
+        for prob, idx in zip(top_probs, top_idxs)
+    ]
 
     predicted_class, confidence = top_results[0]
     return predicted_class, confidence, top_results
@@ -99,7 +107,9 @@ def predict_image(
     class_names: List[str],
     device: torch.device,
 ) -> Tuple[str, float]:
-    predicted_class, confidence, _ = predict_topk(image, model, transform, class_names, device, k=3)
+    predicted_class, confidence, _ = predict_topk(
+        image, model, transform, class_names, device, k=3
+    )
     return predicted_class, confidence
 
 
@@ -112,9 +122,7 @@ def generate_gradcam(
 ) -> Dict[str, object]:
     if not GRADCAM_AVAILABLE:
         error_msg = GRADCAM_IMPORT_ERROR or "Unknown Grad-CAM import error."
-        raise ImportError(
-            f"Grad-CAM could not be imported. Original error: {error_msg}"
-        )
+        raise ImportError(f"Grad-CAM could not be imported. Original error: {error_msg}")
 
     image = prepare_image(image).resize((IMAGE_SIZE, IMAGE_SIZE))
     rgb_img = np.array(image).astype(np.float32) / 255.0
@@ -132,13 +140,13 @@ def generate_gradcam(
     target_layers = [model.layer4[-1]]
     targets = [ClassifierOutputTarget(pred_class_idx)]
 
-    cam = None
+    grayscale_cam = None
+
     try:
-        cam = GradCAM(model=model, target_layers=target_layers)
-        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
-    finally:
-        if cam is not None:
-            cam.clear_hooks()
+        with GradCAM(model=model, target_layers=target_layers) as cam:
+            grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
+    except Exception as e:
+        raise RuntimeError(f"Grad-CAM generation failed: {str(e)}")
 
     visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
 
