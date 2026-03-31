@@ -44,25 +44,41 @@ def build_model(num_classes: int) -> nn.Module:
     return model
 
 
-def load_model(model_path: str | Path):
+def load_model(model_path: str | Path) -> Tuple[nn.Module, List[str], torch.device]:
     model_path = Path(model_path)
 
     if not model_path.exists():
         raise FileNotFoundError(
             f"Model file not found at '{model_path}'. "
             "Place the .pth checkpoint in the same folder as app.py "
-            "or update MODEL_PATH in config.py."
+            "or update MODEL_PATH in app_config.py."
         )
 
     device = get_device()
-    checkpoint = torch.load(model_path, map_location=device)
+
+    try:
+        checkpoint = torch.load(model_path, map_location=device)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load checkpoint from '{model_path}': {e}")
+
+    if not isinstance(checkpoint, dict):
+        raise TypeError("Checkpoint format is invalid. Expected a dictionary.")
 
     if "class_names" not in checkpoint or "model_state_dict" not in checkpoint:
         raise KeyError("Checkpoint must contain 'class_names' and 'model_state_dict'.")
 
     class_names = checkpoint["class_names"]
+
+    if not isinstance(class_names, list) or len(class_names) == 0:
+        raise ValueError("Checkpoint 'class_names' must be a non-empty list.")
+
     model = build_model(num_classes=len(class_names))
-    model.load_state_dict(checkpoint["model_state_dict"])
+
+    try:
+        model.load_state_dict(checkpoint["model_state_dict"])
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model state_dict: {e}")
+
     model.to(device)
     model.eval()
 
@@ -108,7 +124,12 @@ def predict_image(
     device: torch.device,
 ) -> Tuple[str, float]:
     predicted_class, confidence, _ = predict_topk(
-        image, model, transform, class_names, device, k=3
+        image=image,
+        model=model,
+        transform=transform,
+        class_names=class_names,
+        device=device,
+        k=3,
     )
     return predicted_class, confidence
 
@@ -137,18 +158,22 @@ def generate_gradcam(
     pred_class_name = class_names[pred_class_idx]
     confidence_score = confidence.item()
 
+    if not hasattr(model, "layer4"):
+        raise AttributeError("Expected ResNet-style model with attribute 'layer4' for Grad-CAM.")
+
     target_layers = [model.layer4[-1]]
     targets = [ClassifierOutputTarget(pred_class_idx)]
-
-    grayscale_cam = None
 
     try:
         with GradCAM(model=model, target_layers=target_layers) as cam:
             grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
     except Exception as e:
-        raise RuntimeError(f"Grad-CAM generation failed: {str(e)}")
+        raise RuntimeError(f"Grad-CAM generation failed: {e}")
 
-    visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
+    try:
+        visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
+    except Exception as e:
+        raise RuntimeError(f"Failed to create Grad-CAM overlay: {e}")
 
     return {
         "predicted_class": pred_class_name,
