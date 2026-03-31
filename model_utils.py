@@ -11,13 +11,17 @@ from torchvision import models, transforms
 
 from config import IMAGE_SIZE, IMAGENET_MEAN, IMAGENET_STD
 
+GRADCAM_AVAILABLE = False
+GRADCAM_IMPORT_ERROR = None
+
 try:
     from pytorch_grad_cam import GradCAM
     from pytorch_grad_cam.utils.image import show_cam_on_image
     from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+
     GRADCAM_AVAILABLE = True
-except Exception:
-    GRADCAM_AVAILABLE = False
+except Exception as e:
+    GRADCAM_IMPORT_ERROR = str(e)
 
 
 def get_device() -> torch.device:
@@ -107,8 +111,9 @@ def generate_gradcam(
     device: torch.device,
 ) -> Dict[str, object]:
     if not GRADCAM_AVAILABLE:
+        error_msg = GRADCAM_IMPORT_ERROR or "Unknown Grad-CAM import error."
         raise ImportError(
-            "Grad-CAM dependencies are missing. Install them using: pip install grad-cam"
+            f"Grad-CAM could not be imported. Original error: {error_msg}"
         )
 
     image = prepare_image(image).resize((IMAGE_SIZE, IMAGE_SIZE))
@@ -125,9 +130,15 @@ def generate_gradcam(
     confidence_score = confidence.item()
 
     target_layers = [model.layer4[-1]]
-    cam = GradCAM(model=model, target_layers=target_layers)
     targets = [ClassifierOutputTarget(pred_class_idx)]
-    grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
+
+    cam = None
+    try:
+        cam = GradCAM(model=model, target_layers=target_layers)
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)[0]
+    finally:
+        if cam is not None:
+            cam.clear_hooks()
 
     visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
 

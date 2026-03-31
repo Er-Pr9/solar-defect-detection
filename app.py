@@ -11,6 +11,7 @@ from model_utils import (
     predict_topk,
     generate_gradcam,
     GRADCAM_AVAILABLE,
+    GRADCAM_IMPORT_ERROR,
 )
 
 st.set_page_config(page_title="Solar Panel Defect Detection", layout="wide")
@@ -140,9 +141,9 @@ def main():
     st.subheader("Grad-CAM explainability")
 
     if not GRADCAM_AVAILABLE:
-        st.warning(
-            "Grad-CAM library is not installed. Add 'grad-cam' to your environment to enable this section."
-        )
+        st.warning("Grad-CAM could not be loaded in this environment.")
+        if GRADCAM_IMPORT_ERROR:
+            st.code(GRADCAM_IMPORT_ERROR)
         return
 
     try:
