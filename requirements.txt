@@ -8,3 +8,4 @@ opencv-python-headless
 grad-cam
 matplotlib
 scikit-image
+ttach
