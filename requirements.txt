@@ -5,5 +5,5 @@ numpy
 pandas
 Pillow
 opencv-python-headless
-grad-cam
+pytorch-grad-cam
 matplotlib
