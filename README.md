@@ -21,7 +21,7 @@ app_config.py
 requirements.txt
 packages.txt
 solar_defect_model_final.pth
-README.md
+README.md '''
 
 ## Model Details
 
